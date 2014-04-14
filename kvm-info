@@ -1,0 +1,57 @@
+#!/usr/bin/python
+
+import sys, math
+
+try:
+    import libvirt # python-libvirt
+except ImportError:
+    sys.stderr.write("Error: Error Loading python-libvirt")
+
+# define KVM Hosts
+ks = ['localhost', '192.168.0.1' ]
+# end of config
+
+# reset all counters
+count = 0
+tmem = 0
+tcores = 0
+thyper = len(ks)
+
+# Print hosts
+def gz(h):
+        conn=libvirt.open("qemu+ssh://%s/system" % h )
+        n = conn.listDefinedDomains()
+        nd = conn.numOfDomains()
+        f = conn.getFreeMemory()
+        s = conn.getInfo() # maps to virNodeInfo
+        sc = s[2] # number of CPUs
+        sm = s[1] # memory
+        sm = int(math.ceil(sm/1024.0))
+        print "Active Domains on %s (cores:%s Memory:%sGb Domains:%s)" % (h, sc, sm, nd)
+        global tmem
+        tmem = tmem + sm
+        global tcores
+        tcores = tcores + sc
+        for d in n:
+                print "\t %s" % d
+                global count
+                count = count + 1
+
+def showsum():
+        print "Number of Hypervisors in Cluster: %d" % thyper
+        print "Total Memory in Cluster: %dGb" % tmem
+        print "Total Cores in Cluster: %d" % tcores
+
+def main():
+        if len(sys.argv) >= 2:
+                for h in sys.argv[1:]:
+                        gz(h)
+                print "\nTotal Domains Disovered: %d" % count
+        elif len(sys.argv) == 1:
+                for k in ks:
+                        gz(k)
+                print "\nTotal Domains Disovered: %d" % count
+                showsum()
+
+if __name__ == "__main__":
+    main()
